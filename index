@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"> <!-- ЭТО ЧИНИТ СМАЙЛИКИ -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Avito Editor</title>
+    
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/trix@2.0.8/dist/trix.css">
+    <script type="text/javascript" src="https://unpkg.com/trix@2.0.8/dist/trix.umd.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        /* Глобальный сброс стилей - кнопка больше не съедет */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- ПАНЕЛЬ СМАЙЛИКОВ --- */
+        .emoji-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .emoji-btn {
+            font-size: 22px; /* Смайлики покрупнее */
+            padding: 8px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            line-height: 1;
+            flex: 0 0 auto; /* Чтобы не сплющивались */
+        }
+
+        .emoji-btn:active {
+            background: #d0d0d0;
+            transform: scale(0.95);
+        }
+
+        /* --- РЕДАКТОР --- */
+        trix-editor {
+            flex-grow: 1; /* Растягиваем редактор на свободное место */
+            min-height: 250px;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            padding: 15px;
+            background: #fff;
+            margin-bottom: 20px;
+            font-size: 16px; /* Текст покрупнее для телефона */
+        }
+
+        /* Прячем лишние кнопки */
+        trix-toolbar .trix-button-group--file-tools,
+        trix-toolbar .trix-button--icon-link,
+        trix-toolbar .trix-button--icon-heading-1,
+        trix-toolbar .trix-button--icon-quote,
+        trix-toolbar .trix-button--icon-code,
+        trix-toolbar .trix-button--icon-strike {
+            display: none !important;
+        }
+
+        /* --- КНОПКА ОТПРАВКИ --- */
+        #tg-send-btn {
+            width: 100%;
+            padding: 18px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            background-color: var(--tg-theme-button-color, #2481cc);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px; /* Отступ снизу */
+        }
+        
+        #tg-send-btn:active { opacity: 0.8; }
+
+        .info {
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="emoji-toolbar" id="emoji-bar">
+        <!-- Смайлики добавятся сюда сами -->
+    </div>
+
+    <input id="x_input" type="hidden" name="content">
+    <trix-editor input="x_input" placeholder="Введите текст объявления..."></trix-editor>
+
+    <button id="tg-send-btn">Получить код для Авито</button>
+    <div class="info">Версия: Netlify 1.0</div>
+
+    <script>
+        (function() {
+            const btn = document.getElementById('tg-send-btn');
+            const input = document.getElementById('x_input');
+            const editorElement = document.querySelector('trix-editor');
+            
+            // --- ВАШИ СМАЙЛИКИ ---
+            // Теперь они не превратятся в знаки вопроса, т.к. файл в UTF-8
+            const emojis = [
+                "⭐", "🔥", "✅", "❌", "❗", "☎️", 
+                "👤", "🚚", "📦", "👉", "👇", "📞",
+                "💰", "💎", "⚙️", "🔧", "🏠", "🚗"
+            ];
+
+            const emojiContainer = document.getElementById('emoji-bar');
+            emojis.forEach(emo => {
+                const b = document.createElement('button');
+                b.className = 'emoji-btn';
+                b.innerText = emo;
+                b.onclick = (e) => {
+                    e.preventDefault();
+                    editorElement.editor.insertString(emo + " ");
+                };
+                emojiContainer.appendChild(b);
+            });
+
+            const tg = window.Telegram.WebApp;
+            tg.expand();
+
+            // Функция чистки для Авито
+            function cleanForAvito(html) {
+                let clean = html.replace(/<div>/gi, "<p>").replace(/<\/div>/gi, "</p>");
+                clean = clean.replace(/ dir="ltr"/gi, "");
+                clean = clean.replace(/<!--[\s\S]*?-->/g, "");
+                clean = clean.replace(/<p><br><\/p>/gi, "<br>"); 
+                return clean;
+            }
+
+            btn.onclick = function() {
+                let htmlContent = input.value;
+                if (!htmlContent || htmlContent.trim() === "") {
+                    tg.showAlert("Текст пустой!");
+                    return;
+                }
+                
+                try {
+                    const avitoHtml = cleanForAvito(htmlContent);
+                    tg.sendData(avitoHtml);
+                } catch (e) {
+                    alert("Ошибка: " + e.message);
+                }
+            };
+        })();
+    </script>
+</body>
+</html>
